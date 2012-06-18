@@ -113,6 +113,15 @@ class SecurityServiceProvider implements ServiceProviderInterface
             );
         });
 
+        $app['security.auth_types'] = array(
+            'logout' => array(),
+            'pre_auth' => array(),
+            'form' => array(),
+            'http' => array('entryPoint' => 'http'),
+            'remember_me' => array(),
+            'anonymous' => array(),
+        );
+
         $app['security.firewall_map'] = $app->share(function () use ($app) {
             $map = new FirewallMap();
             $entryPoint = 'form';
@@ -141,7 +150,7 @@ class SecurityServiceProvider implements ServiceProviderInterface
                 }
 
                 if (count($firewall)) {
-                    foreach (array('logout', 'pre_auth', 'form', 'http', 'remember_me', 'anonymous') as $type) {
+                    foreach ($app['security.auth_types'] as $type => $settings) {
                         if (isset($firewall[$type])) {
                             $options = $firewall[$type];
 
@@ -154,8 +163,8 @@ class SecurityServiceProvider implements ServiceProviderInterface
                                 $options = array();
                             }
 
-                            if ('http' == $type) {
-                                $entryPoint = 'http';
+                            if (isset($settings['entryPoint'])) {
+                                $entryPoint = $settings['entryPoint'];
                             }
 
                             if (!isset($app['security.authentication.'.$name.'.'.$type])) {
