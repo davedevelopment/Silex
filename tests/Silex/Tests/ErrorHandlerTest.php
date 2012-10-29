@@ -77,6 +77,34 @@ class ErrorHandlerTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals(404, $response->getStatusCode());
     }
 
+    public function testErrorHandlerMethodNotAllowedNoDebug()
+    {
+        $app = new Application();
+        $app['debug'] = false;
+
+        $app->get('/foo', function () { return 'foo'; });
+
+        $request = Request::create('/foo', 'POST');
+        $response = $app->handle($request);
+        $this->assertContains('<title>Whoops, looks like something went wrong.</title>', $response->getContent());
+        $this->assertEquals(405, $response->getStatusCode());
+        $this->assertEquals('GET', $response->headers->get('Allow'));
+    }
+
+    public function testErrorHandlerMethodNotAllowedDebug()
+    {
+        $app = new Application();
+        $app['debug'] = true;
+
+        $app->get('/foo', function () { return 'foo'; });
+
+        $request = Request::create('/foo', 'POST');
+        $response = $app->handle($request);
+        $this->assertContains('No route found for "POST /foo": Method Not Allowed (Allow: GET)', $response->getContent());
+        $this->assertEquals(405, $response->getStatusCode());
+        $this->assertEquals('GET', $response->headers->get('Allow'));
+    }
+
     public function testNoErrorHandler()
     {
         $app = new Application();
@@ -107,16 +135,21 @@ class ErrorHandlerTest extends \PHPUnit_Framework_TestCase
             throw new NotFoundHttpException('foo exception');
         });
 
+        $app->get('/405', function () { return 'foo'; });
+
         $app->error(function ($e, $code) {
-            return new Response('foo exception handler', $code);
+            return new Response('foo exception handler');
         });
 
         $response = $this->checkRouteResponse($app, '/500', 'foo exception handler');
         $this->assertEquals(500, $response->getStatusCode());
 
-        $request = Request::create('/404');
-        $response = $app->handle($request);
+        $response = $app->handle(Request::create('/404'));
         $this->assertEquals(404, $response->getStatusCode());
+
+        $response = $app->handle(Request::create('/405', 'POST'));
+        $this->assertEquals(405, $response->getStatusCode());
+        $this->assertEquals('GET', $response->headers->get('Allow'));
     }
 
     public function testMultipleErrorHandlers()
@@ -139,6 +172,7 @@ class ErrorHandlerTest extends \PHPUnit_Framework_TestCase
 
         $app->error(function ($e) use (&$errors) {
             $errors++;
+
             return new Response('foo exception handler');
         });
 
@@ -239,6 +273,122 @@ class ErrorHandlerTest extends \PHPUnit_Framework_TestCase
         }
     }
 
+    public function testErrorHandlerWithDefaultException()
+    {
+        $app = new Application();
+        $app['debug'] = false;
+
+        $app->match('/foo', function () {
+            throw new \Exception();
+        });
+
+        $app->error(function (\Exception $e) {
+            return new Response("Exception thrown", 500);
+        });
+
+        $request = Request::create('/foo');
+        $response = $app->handle($request);
+        $this->assertContains('Exception thrown', $response->getContent());
+        $this->assertEquals(500, $response->getStatusCode());
+    }
+
+    public function testErrorHandlerWithStandardException()
+    {
+        $app = new Application();
+        $app['debug'] = false;
+
+        $app->match('/foo', function () {
+            // Throw a normal exception
+            throw new \Exception();
+        });
+
+        // Register 2 error handlers, each with a specified Exception class
+        // Since we throw a standard Exception above only
+        // the second error handler should fire
+        $app->error(function (\LogicException $e) { // Extends \Exception
+
+            return "Caught LogicException";
+        });
+        $app->error(function (\Exception $e) {
+            return "Caught Exception";
+        });
+
+        $request = Request::create('/foo');
+        $response = $app->handle($request);
+        $this->assertContains('Caught Exception', $response->getContent());
+    }
+
+    public function testErrorHandlerWithSpecifiedException()
+    {
+        $app = new Application();
+        $app['debug'] = false;
+
+        $app->match('/foo', function () {
+            // Throw a specified exception
+            throw new \LogicException();
+        });
+
+        // Register 2 error handlers, each with a specified Exception class
+        // Since we throw a LogicException above
+        // the first error handler should fire
+        $app->error(function (\LogicException $e) { // Extends \Exception
+
+            return "Caught LogicException";
+        });
+        $app->error(function (\Exception $e) {
+            return "Caught Exception";
+        });
+
+        $request = Request::create('/foo');
+        $response = $app->handle($request);
+        $this->assertContains('Caught LogicException', $response->getContent());
+    }
+
+    public function testErrorHandlerWithSpecifiedExceptionInReverseOrder()
+    {
+        $app = new Application();
+        $app['debug'] = false;
+
+        $app->match('/foo', function () {
+            // Throw a specified exception
+            throw new \LogicException();
+        });
+
+        // Register the \Exception error handler first, since the
+        // error handler works with an instanceof mechanism the
+        // second more specific error handler should not fire since
+        // the \Exception error handler is registered first and also
+        // captures all exceptions that extend it
+        $app->error(function (\Exception $e) {
+            return "Caught Exception";
+        });
+        $app->error(function (\LogicException $e) { // Extends \Exception
+
+            return "Caught LogicException";
+        });
+
+        $request = Request::create('/foo');
+        $response = $app->handle($request);
+        $this->assertContains('Caught Exception', $response->getContent());
+    }
+
+    public function testErrorHandlerWithArrayStyleCallback()
+    {
+        $app = new Application();
+        $app['debug'] = false;
+
+        $app->match('/foo', function () {
+            throw new \Exception();
+        });
+
+        // Array style callback for error handler
+        $app->error(array($this, 'exceptionHandler'));
+
+        $request = Request::create('/foo');
+        $response = $app->handle($request);
+        $this->assertContains('Caught Exception', $response->getContent());
+    }
+
     protected function checkRouteResponse($app, $path, $expectedContent, $method = 'get', $message = null)
     {
         $request = Request::create($path, $method);
@@ -246,5 +396,10 @@ class ErrorHandlerTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals($expectedContent, $response->getContent(), $message);
 
         return $response;
+    }
+
+    public function exceptionHandler()
+    {
+        return 'Caught Exception';
     }
 }

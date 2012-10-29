@@ -12,7 +12,6 @@
 namespace Silex;
 
 use Symfony\Component\Routing\RouteCollection;
-use Symfony\Component\Routing\Route;
 use Silex\Controller;
 
 /**
@@ -28,6 +27,15 @@ use Silex\Controller;
 class ControllerCollection
 {
     protected $controllers = array();
+    protected $defaultRoute;
+
+    /**
+     * Constructor.
+     */
+    public function __construct(Route $defaultRoute)
+    {
+        $this->defaultRoute = $defaultRoute;
+    }
 
     /**
      * Maps a pattern to a callable.
@@ -35,15 +43,17 @@ class ControllerCollection
      * You can optionally specify HTTP methods that should be matched.
      *
      * @param string $pattern Matched route pattern
-     * @param mixed $to Callback that returns the response when matched
+     * @param mixed  $to      Callback that returns the response when matched
      *
-     * @return Silex\Controller
+     * @return Controller
      */
     public function match($pattern, $to)
     {
-        $route = new Route($pattern, array('_controller' => $to));
-        $controller = new Controller($route);
-        $this->add($controller);
+        $route = clone $this->defaultRoute;
+        $route->setPattern($pattern);
+        $route->setDefault('_controller', $to);
+
+        $this->controllers[] = $controller = new Controller($route);
 
         return $controller;
     }
@@ -52,9 +62,9 @@ class ControllerCollection
      * Maps a GET request to a callable.
      *
      * @param string $pattern Matched route pattern
-     * @param mixed $to Callback that returns the response when matched
+     * @param mixed  $to      Callback that returns the response when matched
      *
-     * @return Silex\Controller
+     * @return Controller
      */
     public function get($pattern, $to)
     {
@@ -65,9 +75,9 @@ class ControllerCollection
      * Maps a POST request to a callable.
      *
      * @param string $pattern Matched route pattern
-     * @param mixed $to Callback that returns the response when matched
+     * @param mixed  $to      Callback that returns the response when matched
      *
-     * @return Silex\Controller
+     * @return Controller
      */
     public function post($pattern, $to)
     {
@@ -78,9 +88,9 @@ class ControllerCollection
      * Maps a PUT request to a callable.
      *
      * @param string $pattern Matched route pattern
-     * @param mixed $to Callback that returns the response when matched
+     * @param mixed  $to      Callback that returns the response when matched
      *
-     * @return Silex\Controller
+     * @return Controller
      */
     public function put($pattern, $to)
     {
@@ -91,27 +101,34 @@ class ControllerCollection
      * Maps a DELETE request to a callable.
      *
      * @param string $pattern Matched route pattern
-     * @param mixed $to Callback that returns the response when matched
+     * @param mixed  $to      Callback that returns the response when matched
      *
-     * @return Silex\Controller
+     * @return Controller
      */
     public function delete($pattern, $to)
     {
         return $this->match($pattern, $to)->method('DELETE');
     }
 
-    /**
-     * Adds a controller to the staging area.
-     *
-     * @param Controller $controller
-     */
-    public function add(Controller $controller)
+    public function __call($method, $arguments)
     {
-        $this->controllers[] = $controller;
+        if (!method_exists($this->defaultRoute, $method)) {
+            throw new \BadMethodCallException(sprintf('Method "%s::%s" does not exist.', get_class($this->defaultRoute), $method));
+        }
+
+        call_user_func_array(array($this->defaultRoute, $method), $arguments);
+
+        foreach ($this->controllers as $controller) {
+            call_user_func_array(array($controller, $method), $arguments);
+        }
+
+        return $this;
     }
 
     /**
      * Persists and freezes staged controllers.
+     *
+     * @param string $prefix
      *
      * @return RouteCollection A RouteCollection instance
      */
@@ -120,10 +137,14 @@ class ControllerCollection
         $routes = new RouteCollection();
 
         foreach ($this->controllers as $controller) {
-            if (!$controller->getRouteName()) {
-                $controller->bindDefaultRouteName($prefix);
+            if (!$name = $controller->getRouteName()) {
+                $name = $controller->generateRouteName($prefix);
+                while ($routes->get($name)) {
+                    $name .= '_';
+                }
+                $controller->bind($name);
             }
-            $routes->add($controller->getRouteName(), $controller->getRoute());
+            $routes->add($name, $controller->getRoute());
             $controller->freeze();
         }
 

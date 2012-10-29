@@ -8,24 +8,29 @@ Parameters
 ----------
 
 * **session.storage.save_path** (optional): The path for the
-  ``NativeFileSessionHandler``, defaults to the value of
+  ``FileSessionHandler``, defaults to the value of
   ``sys_get_temp_dir()``.
 
 * **session.storage.options**: An array of options that is passed to the
   constructor of the ``session.storage`` service.
 
-  In case of the default ``NativeSessionStorage``, the possible options are:
+  In case of the default `NativeSessionStorage
+  <http://api.symfony.com/master/Symfony/Component/HttpFoundation/Session/Storage/NativeSessionStorage.html>`_,
+  the possible options are:
 
   * **name**: The cookie name (_SESS by default)
   * **id**: The session id (null by default)
-  * **lifetime**: Cookie lifetime
+  * **cookie_lifetime**: Cookie lifetime
   * **path**: Cookie path
   * **domain**: Cookie domain
   * **secure**: Cookie secure (HTTPS)
   * **httponly**: Whether the cookie is http only
 
-  However, all of these are optional. Sessions last as long as the browser
-  is open. To override this, set the ``lifetime`` option.
+  However, all of these are optional. Sessions last as long as the browser is
+  open. To override this, set the ``lifetime`` option.
+
+* **session.test**: Whether to simulate sessions or not (useful when writing
+  functional tests).
 
 Services
 --------
@@ -33,24 +38,26 @@ Services
 * **session**: An instance of Symfony2's `Session
   <http://api.symfony.com/master/Symfony/Component/HttpFoundation/Session/Session.html>`_.
 
-* **session.storage**: A service that is used for persistence of the
-  session data. Defaults to a ``NativeSessionStorage``
-  
-* **session.storage.handler**: A service that is used by the ``session.storage``
-  for data access. Defaults to a ``NativeFileSessionHandler`` storage handler.
+* **session.storage**: A service that is used for persistence of the session
+  data.
+
+* **session.storage.handler**: A service that is used by the
+  ``session.storage`` for data access. Defaults to a `FileSessionHandler
+  <http://api.symfony.com/master/Symfony/Component/HttpFoundation/Session/Storage/Handler/FileSessionHandler.html>`_
+  storage handler.
 
 Registering
 -----------
 
-::
+.. code-block:: php
 
     $app->register(new Silex\Provider\SessionServiceProvider());
 
 Usage
 -----
 
-The Session provider provides a ``session`` service. Here is an
-example that authenticates a user and creates a session for him::
+The Session provider provides a ``session`` service. Here is an example that
+authenticates a user and creates a session for him::
 
     use Symfony\Component\HttpFoundation\Response;
 

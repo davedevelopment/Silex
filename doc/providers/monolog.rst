@@ -1,22 +1,17 @@
 MonologServiceProvider
 ======================
 
-The *MonologServiceProvider* provides a default logging mechanism
-through Jordi Boggiano's `Monolog <https://github.com/Seldaek/monolog>`_
-library.
+The *MonologServiceProvider* provides a default logging mechanism through
+Jordi Boggiano's `Monolog <https://github.com/Seldaek/monolog>`_ library.
 
-It will log requests and errors and allow you to add debug
-logging to your application, so you don't have to use
-``var_dump`` so much anymore. You can use the grown-up
-version called ``tail -f``.
+It will log requests and errors and allow you to add debug logging to your
+application, so you don't have to use ``var_dump`` so much anymore. You can
+use the grown-up version called ``tail -f``.
 
 Parameters
 ----------
 
 * **monolog.logfile**: File where logs are written to.
-
-* **monolog.class_path** (optional): Path to where the
-  Monolog library is located.
 
 * **monolog.level** (optional): Level of logging defaults
   to ``DEBUG``. Must be one of ``Logger::DEBUG``, ``Logger::INFO``,
@@ -36,34 +31,33 @@ Services
 
     $app['monolog']->addDebug('Testing the Monolog logging.');
 
-* **monolog.configure**: Protected closure that takes the
-  logger as an argument. You can override it if you do not
-  want the default behavior.
-
 Registering
 -----------
 
-Make sure you place a copy of *Monolog* in the ``vendor/monolog``
-directory::
+.. code-block:: php
 
     $app->register(new Silex\Provider\MonologServiceProvider(), array(
-        'monolog.logfile'       => __DIR__.'/development.log',
-        'monolog.class_path'    => __DIR__.'/vendor/monolog/src',
+        'monolog.logfile' => __DIR__.'/development.log',
     ));
 
 .. note::
 
-    Monolog is not compiled into the ``silex.phar`` file. You have to
-    add your own copy of Monolog to your application.
+    Monolog comes with the "fat" Silex archive but not with the regular one.
+    If you are using Composer, add it as a dependency to your
+    ``composer.json`` file:
+
+    .. code-block:: json
+
+        "require": {
+            "monolog/monolog": ">=1.0.0",
+        }
 
 Usage
 -----
 
-The MonologServiceProvider provides a ``monolog`` service. You can use
-it to add log entries for any logging level through ``addDebug()``,
-``addInfo()``, ``addWarning()`` and ``addError()``.
-
-::
+The MonologServiceProvider provides a ``monolog`` service. You can use it to
+add log entries for any logging level through ``addDebug()``, ``addInfo()``,
+``addWarning()`` and ``addError()``::
 
     use Symfony\Component\HttpFoundation\Response;
 
@@ -74,6 +68,29 @@ it to add log entries for any logging level through ``addDebug()``,
 
         return new Response('', 201);
     });
+
+Customization
+-------------
+
+You can configure Monolog (like adding or changing the handlers) before using
+it by extending the ``monolog`` service::
+
+    $app['monolog'] = $app->share($app->extend('monolog', function($monolog, $app) {
+        $monolog->pushHandler(...);
+
+        return $monolog;
+    }));
+
+Traits
+------
+
+``Silex\Application\MonologTrait`` adds the following shortcuts:
+
+* **log**: Logs a message.
+
+.. code-block:: php
+
+    $app->log(sprintf("User '%s' registered.", $username));
 
 For more information, check out the `Monolog documentation
 <https://github.com/Seldaek/monolog>`_.

@@ -9,7 +9,7 @@
  * file that was distributed with this source code.
  */
 
-namespace Silex;
+namespace Silex\Util;
 
 use Symfony\Component\Finder\Finder;
 use Symfony\Component\HttpKernel\Kernel;
@@ -17,6 +17,8 @@ use Symfony\Component\Process\Process;
 
 /**
  * The Compiler class compiles the Silex framework.
+ *
+ * This is deprecated. Use composer instead.
  *
  * @author Fabien Potencier <fabien@symfony.com>
  */
@@ -46,31 +48,34 @@ class Compiler
 
         $phar->startBuffering();
 
+        $root = __DIR__.'/../../..';
+
         $finder = new Finder();
         $finder->files()
             ->ignoreVCS(true)
             ->name('*.php')
             ->notName('Compiler.php')
-            ->in(__DIR__.'/..')
-            ->in(__DIR__.'/../../vendor/pimple/pimple/lib')
-            ->in(__DIR__.'/../../vendor/symfony/class-loader/Symfony/Component/ClassLoader')
-            ->in(__DIR__.'/../../vendor/symfony/event-dispatcher/Symfony/Component/EventDispatcher')
-            ->in(__DIR__.'/../../vendor/symfony/http-foundation/Symfony/Component/HttpFoundation')
-            ->in(__DIR__.'/../../vendor/symfony/http-kernel/Symfony/Component/HttpKernel')
-            ->in(__DIR__.'/../../vendor/symfony/routing/Symfony/Component/Routing')
-            ->in(__DIR__.'/../../vendor/symfony/browser-kit/Symfony/Component/BrowserKit')
-            ->in(__DIR__.'/../../vendor/symfony/css-selector/Symfony/Component/CssSelector')
-            ->in(__DIR__.'/../../vendor/symfony/dom-crawler/Symfony/Component/DomCrawler')
+            ->exclude('Tests')
+            ->in($root.'/src')
+            ->in($root.'/vendor/pimple/pimple/lib')
+            ->in($root.'/vendor/symfony/event-dispatcher/Symfony/Component/EventDispatcher')
+            ->in($root.'/vendor/symfony/http-foundation/Symfony/Component/HttpFoundation')
+            ->in($root.'/vendor/symfony/http-kernel/Symfony/Component/HttpKernel')
+            ->in($root.'/vendor/symfony/routing/Symfony/Component/Routing')
+            ->in($root.'/vendor/symfony/browser-kit/Symfony/Component/BrowserKit')
+            ->in($root.'/vendor/symfony/css-selector/Symfony/Component/CssSelector')
+            ->in($root.'/vendor/symfony/dom-crawler/Symfony/Component/DomCrawler')
         ;
 
         foreach ($finder as $file) {
             $this->addFile($phar, $file);
         }
 
-        $this->addFile($phar, new \SplFileInfo(__DIR__.'/../../LICENSE'), false);
-        $this->addFile($phar, new \SplFileInfo(__DIR__.'/../../vendor/.composer/autoload.php'));
-        $this->addFile($phar, new \SplFileInfo(__DIR__.'/../../vendor/.composer/ClassLoader.php'));
-        $this->addFile($phar, new \SplFileInfo(__DIR__.'/../../vendor/.composer/autoload_namespaces.php'));
+        $this->addFile($phar, new \SplFileInfo($root.'/LICENSE'), false);
+        $this->addFile($phar, new \SplFileInfo($root.'/vendor/autoload.php'));
+        $this->addFile($phar, new \SplFileInfo($root.'/vendor/composer/ClassLoader.php'));
+        $this->addFile($phar, new \SplFileInfo($root.'/vendor/composer/autoload_namespaces.php'));
+        $this->addFile($phar, new \SplFileInfo($root.'/vendor/composer/autoload_classmap.php'));
 
         // Stubs
         $phar->setStub($this->getStub());
@@ -84,13 +89,14 @@ class Compiler
 
     protected function addFile($phar, $file, $strip = true)
     {
-        $path = str_replace(dirname(dirname(__DIR__)).DIRECTORY_SEPARATOR, '', $file->getRealPath());
+        $path = str_replace(dirname(dirname(dirname(__DIR__))).DIRECTORY_SEPARATOR, '', $file->getRealPath());
+
         $content = file_get_contents($file);
         if ($strip) {
             $content = self::stripWhitespace($content);
         }
 
-        $content = str_replace('@package_version@', $this->version, $content);
+        $content = preg_replace("/const VERSION = '.*?';/", "const VERSION = '".$this->version."';", $content);
 
         $phar->addFromString($path, $content);
     }
@@ -110,7 +116,7 @@ class Compiler
 
 Phar::mapPhar('silex.phar');
 
-require_once 'phar://silex.phar/vendor/.composer/autoload.php';
+require_once 'phar://silex.phar/vendor/autoload.php';
 
 if ('cli' === php_sapi_name() && basename(__FILE__) === basename($_SERVER['argv'][0]) && isset($_SERVER['argv'][1])) {
     switch ($_SERVER['argv'][1]) {
@@ -155,7 +161,7 @@ EOF;
      *
      * @return string The PHP string with the whitespace removed
      */
-    static public function stripWhitespace($source)
+    public static function stripWhitespace($source)
     {
         if (!function_exists('token_get_all')) {
             return $source;

@@ -22,7 +22,6 @@ use Symfony\Component\Routing\Matcher\UrlMatcherInterface;
 class LazyUrlMatcher implements UrlMatcherInterface
 {
     private $factory;
-    private $urlMatcher;
 
     public function __construct(\Closure $factory)
     {
@@ -40,6 +39,7 @@ class LazyUrlMatcher implements UrlMatcherInterface
         if (!$urlMatcher instanceof UrlMatcherInterface) {
             throw new \LogicException("Factory supplied to LazyUrlMatcher must return implementation of UrlMatcherInterface.");
         }
+
         return $urlMatcher;
     }
 

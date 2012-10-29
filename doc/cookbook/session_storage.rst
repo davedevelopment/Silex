@@ -1,21 +1,24 @@
 How to use PdoSessionStorage to store sessions in the database
 ==============================================================
 
-By default, the :doc:`SessionServiceProvider <providers/session>` writes
+By default, the :doc:`SessionServiceProvider </providers/session>` writes
 session information in files using Symfony2 NativeFileSessionStorage. Most
 medium to large websites use a database to store sessions instead of files,
 because databases are easier to use and scale in a multi-webserver
 environment.
 
-Symfony2's ``NativeSessionStorage`` has multiple storage handlers and one of them uses PDO to
-store sessions, ``PdoSessionHandler``.
-To use it, replace the ``session.storage.handler`` service in your application like
-explained below.
+Symfony2's `NativeSessionStorage
+<http://api.symfony.com/master/Symfony/Component/HttpFoundation/Session/Storage/NativeSessionStorage.html>`_
+has multiple storage handlers and one of them uses PDO to store sessions,
+`PdoSessionHandler
+<http://api.symfony.com/master/Symfony/Component/HttpFoundation/Session/Storage/Handler/PdoSessionHandler.html>`_.
+To use it, replace the ``session.storage.handler`` service in your application
+like explained below.
 
 Example
 -------
 
-::
+.. code-block:: php
 
     use Symfony\Component\HttpFoundation\Session\Storage\Handler\PdoSessionHandler;
 
@@ -59,4 +62,4 @@ PdoSessionStorage needs a database table with 3 columns:
 
 You can find examples of SQL statements to create the session table in the
 `Symfony2 cookbook
-<http://symfony.com/doc/current/cookbook/configuration/pdo_session_storage.html>`
+<http://symfony.com/doc/current/cookbook/configuration/pdo_session_storage.html>`_

@@ -8,9 +8,10 @@ Silex
     monolog
     session
     swiftmailer
-    symfony_bridges
     translation
     twig
     url_generator
     validator
+    form
     http_cache
+    security

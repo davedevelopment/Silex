@@ -12,8 +12,7 @@
 namespace Silex\Tests;
 
 use Silex\Controller;
-
-use Symfony\Component\Routing\Route;
+use Silex\Route;
 
 /**
  * Controller test cases.
@@ -75,7 +74,7 @@ class ControllerTest extends \PHPUnit_Framework_TestCase
     public function testDefaultRouteNameGeneration(Route $route, $expectedRouteName)
     {
         $controller = new Controller($route);
-        $controller->bindDefaultRouteName('');
+        $controller->bind($controller->generateRouteName(''));
 
         $this->assertEquals($expectedRouteName, $controller->getRouteName());
     }
@@ -88,5 +87,36 @@ class ControllerTest extends \PHPUnit_Framework_TestCase
             array(new Route('/colon:pipe|dashes-escaped'), '_colon_pipe_dashes_escaped'),
             array(new Route('/underscores_and.periods'), '_underscores_and.periods'),
         );
+    }
+
+    public function testRouteExtension()
+    {
+        $route = new MyRoute();
+
+        $controller = new Controller($route);
+        $controller->foo('foo');
+
+        $this->assertEquals('foo', $route->foo);
+    }
+
+    /**
+     * @expectedException \BadMethodCallException
+     */
+    public function testRouteMethodDoesNotExist()
+    {
+        $route = new MyRoute();
+
+        $controller = new Controller($route);
+        $controller->bar();
+    }
+}
+
+class MyRoute extends Route
+{
+    public $foo;
+
+    public function foo($value)
+    {
+        $this->foo = $value;
     }
 }

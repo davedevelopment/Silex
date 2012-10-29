@@ -13,4 +13,6 @@ Silex
     internals
     contributing
     providers/index
+    web_servers
     changelog
+    phar

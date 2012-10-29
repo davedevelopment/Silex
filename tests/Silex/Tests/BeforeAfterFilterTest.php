@@ -15,7 +15,6 @@ use Silex\Application;
 
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
  * Error handler test cases.
@@ -60,6 +59,7 @@ class BeforeAfterFilterTest extends \PHPUnit_Framework_TestCase
 
         $app->match('/foo', function () use (&$i) {
             $i++;
+
             return new Response('foo');
         });
 
@@ -163,7 +163,33 @@ class BeforeAfterFilterTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals(2, $i);
     }
 
-    public function testRequestShouldBePopulatedOnBefore() {
+    public function testBeforeFilterPreventsBeforeMiddlewaresToBeExecuted()
+    {
+        $app = new Application();
+
+        $app->before(function () { return new Response('app before'); });
+
+        $app->get('/', function() {
+            return new Response('test');
+        })->before(function() {
+            return new Response('middleware before');
+        });
+
+        $this->assertEquals('app before', $app->handle(Request::create('/'))->getContent());
+    }
+
+    public function testBeforeFilterExceptionsWhenHandlingAnException()
+    {
+        $app = new Application();
+
+        $app->before(function () { throw new \RuntimeException(''); });
+
+        // even if the before filter throws an exception, we must have the 404
+        $this->assertEquals(404, $app->handle(Request::create('/'))->getStatusCode());
+    }
+
+    public function testRequestShouldBePopulatedOnBefore()
+    {
         $app = new Application();
 
         $app->before(function () use ($app) {

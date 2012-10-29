@@ -25,10 +25,14 @@ class UrlGeneratorServiceProvider implements ServiceProviderInterface
 {
     public function register(Application $app)
     {
-        $app['url_generator'] = $app->share(function () use ($app) {
+        $app['url_generator'] = $app->share(function ($app) {
             $app->flush();
 
             return new UrlGenerator($app['routes'], $app['request_context']);
         });
+    }
+
+    public function boot(Application $app)
+    {
     }
 }
